@@ -107,6 +107,39 @@ agent.on('metrics', (metrics) => {
 
 Here’s a complete example of using Nova Spark in a TypeScript application:
 
+```typescript
+import { Agent } from '@nova/spark';
+import { Config } from '@nova/spark';
+import { CpuCollector } from '@nova/spark/collectors/CpuCollector';
+import { MemoryCollector } from '@nova/spark/collectors/MemoryCollector';
+import { Metric } from '@nova/spark/core/Collector'; // Import the Metric type
+
+const config = new Config({
+  sampleInterval: 5000, // Collect metrics every 5 seconds
+  enabled: true,
+  maxMemorySnapshots: 10,
+});
+
+// Create an instance of the Agent
+const agent = new Agent(config);
+
+// Register collectors for CPU and memory metrics
+agent.registerCollector('cpu', new CpuCollector(agent.getConfig()));
+agent.registerCollector('memory', new MemoryCollector(agent.getConfig()));
+
+// Listen for metrics events
+agent.on('metrics', (metrics: Metric[]) => { // Specify the type of metrics
+  metrics.forEach((metric: Metric) => { // Specify the type for each metric
+    console.log(`${metric.name}: ${metric.value}`);
+  });
+});
+
+// Start the agent and begin collecting metrics
+(async () => {
+  await agent.start();
+  console.log('Agent started successfully');
+})();
+```
 
 <a name="javascript-example"/>
 
