@@ -66,6 +66,9 @@ class Agent extends events_1.EventEmitter {
      * ```
      */
     registerCollector(name, collector) {
+        if (this.collectors.has(name)) {
+            throw new Error('Collector already exists');
+        }
         this.collectors.set(name, collector);
     }
     /**
@@ -92,13 +95,19 @@ class Agent extends events_1.EventEmitter {
     async start() {
         if (this.isRunning)
             return;
-        this.isRunning = true;
-        // Start all collectors
-        for (const collector of this.collectors.values()) {
-            await collector.start();
+        try {
+            // Start all collectors
+            for (const collector of this.collectors.values()) {
+                await collector.start();
+            }
+            this.isRunning = true; // Set to true only after all collectors have started
+            // Begin collection cycle
+            this.collectionInterval = setInterval(() => this.collect(), this.config.sampleInterval);
         }
-        // Begin collection cycle
-        this.collectionInterval = setInterval(() => this.collect(), this.config.sampleInterval);
+        catch (error) {
+            this.isRunning = false; // Ensure isRunning is false if starting fails
+            throw new Error('Start failed');
+        }
     }
     /**
      * Stops the agent and all collectors.
@@ -124,14 +133,19 @@ class Agent extends events_1.EventEmitter {
     async stop() {
         if (!this.isRunning)
             return;
-        if (this.collectionInterval) {
-            clearInterval(this.collectionInterval);
+        try {
+            if (this.collectionInterval) {
+                clearInterval(this.collectionInterval);
+            }
+            // Stop all collectors
+            for (const collector of this.collectors.values()) {
+                await collector.stop();
+            }
+            this.isRunning = false;
         }
-        // Stop all collectors
-        for (const collector of this.collectors.values()) {
-            await collector.stop();
+        catch (error) {
+            throw new Error('Stop failed');
         }
-        this.isRunning = false;
     }
     /**
      * Collects metrics from all registered collectors.
@@ -196,7 +210,16 @@ class Agent extends events_1.EventEmitter {
      * ```
      */
     getConfig() {
-        return this.config;
+        // Return a new Config instance with the same values to ensure immutability
+        return new Config_1.Config({
+            sampleInterval: this.config.sampleInterval,
+            enabled: this.config.enabled,
+            maxMemorySnapshots: this.config.maxMemorySnapshots,
+            cpuProfilingDuration: this.config.cpuProfilingDuration,
+            eventLoopThreshold: this.config.eventLoopThreshold,
+            metricsBufferSize: this.config.metricsBufferSize,
+            debugMode: this.config.debugMode
+        });
     }
 }
 exports.Agent = Agent;

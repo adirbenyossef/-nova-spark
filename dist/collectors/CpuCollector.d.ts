@@ -22,6 +22,7 @@ export declare class CpuCollector implements Collector {
     private readonly config;
     private isRunning;
     private lastUsage;
+    private lastTimestamp;
     /**
      * Creates a new CpuCollector instance.
      *

@@ -29,6 +29,7 @@ class CpuCollector {
         this.config = config;
         this.isRunning = false;
         this.lastUsage = null;
+        this.lastTimestamp = null;
     }
     /**
      * Initializes the CPU collector.
@@ -41,6 +42,7 @@ class CpuCollector {
         if (this.isRunning)
             return;
         this.lastUsage = process.cpuUsage();
+        this.lastTimestamp = process.hrtime();
         this.isRunning = true;
     }
     /**
@@ -54,6 +56,7 @@ class CpuCollector {
         if (!this.isRunning)
             return;
         this.lastUsage = null;
+        this.lastTimestamp = null;
         this.isRunning = false;
     }
     /**
@@ -87,44 +90,68 @@ class CpuCollector {
      * ```
      */
     async collect() {
-        if (!this.isRunning) {
+        if (!this.isRunning || !this.lastUsage || !this.lastTimestamp) {
             throw new Error('Collector must be started before collecting metrics');
         }
-        const metrics = [];
-        const startUsage = process.cpuUsage(this.lastUsage || undefined);
-        // Wait for the configured duration
-        await new Promise(resolve => setTimeout(resolve, this.config.cpuProfilingDuration));
-        const endUsage = process.cpuUsage(startUsage);
-        const timestamp = Date.now();
-        // Store for next delta calculation
+        const currentUsage = process.cpuUsage(this.lastUsage);
+        const elapsedTime = process.hrtime(this.lastTimestamp);
+        const elapsedMs = (elapsedTime[0] * 1e9 + elapsedTime[1]) / 1e6;
+        const numCPUs = require('os').cpus().length;
+        const userCpuPercent = (currentUsage.user / 1000 / elapsedMs) * 100 / numCPUs;
+        const systemCpuPercent = (currentUsage.system / 1000 / elapsedMs) * 100 / numCPUs;
         this.lastUsage = process.cpuUsage();
-        // Calculate CPU utilization percentage
-        const totalTime = this.config.cpuProfilingDuration * 1000; // Convert to microseconds
-        const userPercent = (endUsage.user / totalTime) * 100;
-        const systemPercent = (endUsage.system / totalTime) * 100;
-        metrics.push({
-            name: 'cpu.user',
-            value: userPercent,
-            timestamp,
-            type: 'cpu',
-            metadata: {
-                unit: 'percent',
-                raw: endUsage.user,
-                duration: this.config.cpuProfilingDuration
+        this.lastTimestamp = process.hrtime();
+        return [
+            {
+                name: 'cpu.user',
+                value: Math.min(100, Math.max(0, userCpuPercent)),
+                timestamp: Date.now(),
+                type: 'cpu',
+                metadata: { unit: 'percent', duration: this.config.cpuProfilingDuration }
+            },
+            {
+                name: 'cpu.system',
+                value: Math.min(100, Math.max(0, systemCpuPercent)),
+                timestamp: Date.now(),
+                type: 'cpu',
+                metadata: { unit: 'percent', duration: this.config.cpuProfilingDuration }
             }
-        });
-        metrics.push({
-            name: 'cpu.system',
-            value: systemPercent,
-            timestamp,
-            type: 'cpu',
-            metadata: {
-                unit: 'percent',
-                raw: endUsage.system,
-                duration: this.config.cpuProfilingDuration
-            }
-        });
-        return metrics;
+        ];
+        // const metrics: Metric[] = [];
+        // const startUsage = process.cpuUsage(this.lastUsage || undefined);
+        // // Wait for the configured duration
+        // await new Promise(resolve => setTimeout(resolve, this.config.cpuProfilingDuration));
+        // const endUsage = process.cpuUsage(startUsage);
+        // const timestamp = Date.now();
+        // // Store for next delta calculation
+        // this.lastUsage = process.cpuUsage();
+        // // Calculate CPU utilization percentage
+        // const totalTime = this.config.cpuProfilingDuration * 1000; // Convert to microseconds
+        // const userPercent = (endUsage.user / totalTime) * 100;
+        // const systemPercent = (endUsage.system / totalTime) * 100;
+        // metrics.push({
+        //   name: 'cpu.user',
+        //   value: userPercent,
+        //   timestamp,
+        //   type: 'cpu',
+        //   metadata: { 
+        //     unit: 'percent',
+        //     raw: endUsage.user,
+        //     duration: this.config.cpuProfilingDuration
+        //   }
+        // });
+        // metrics.push({
+        //   name: 'cpu.system',
+        //   value: systemPercent,
+        //   timestamp,
+        //   type: 'cpu',
+        //   metadata: { 
+        //     unit: 'percent',
+        //     raw: endUsage.system,
+        //     duration: this.config.cpuProfilingDuration
+        //   }
+        // });
+        // return metrics;
     }
 }
 exports.CpuCollector = CpuCollector;

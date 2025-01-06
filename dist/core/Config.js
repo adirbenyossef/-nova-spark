@@ -51,6 +51,8 @@ class Config {
         this.eventLoopThreshold = config.eventLoopThreshold ?? 100;
         this.metricsBufferSize = config.metricsBufferSize ?? 1000;
         this.debugMode = config.debugMode ?? false;
+        // Make the object completely immutable
+        Object.freeze(this);
         // Validate configuration
         this.validateConfig();
     }

@@ -55,7 +55,9 @@ class MetricsStream extends events_1.EventEmitter {
      * ```
      */
     push(metrics) {
-        this.buffer.push(...metrics);
+        // Create immutable copies of the metrics before adding to buffer
+        const immutableMetrics = metrics.map(metric => Object.freeze({ ...metric }));
+        this.buffer.push(...immutableMetrics);
         if (this.buffer.length >= this.config.metricsBufferSize) {
             this.flush();
         }
@@ -75,7 +77,9 @@ class MetricsStream extends events_1.EventEmitter {
              * @event MetricsStream#data
              * @type {Metric[]}
              */
-            this.emit('data', [...this.buffer]);
+            // Create a frozen copy of the buffer before emitting
+            const metricsToEmit = Object.freeze([...this.buffer]);
+            this.emit('data', metricsToEmit);
             this.buffer.length = 0;
         }
     }
