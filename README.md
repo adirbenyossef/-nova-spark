@@ -2,7 +2,6 @@
 
 
 **Author:**  💫 Adir Ben Yosef  
-**Email:** [adirbenyossef@gmail.com](mailto:adirbenyossef@gmail.com)  
 **GitHub:** [https://github.com/adirbenyossef](https://github.com/adirbenyossef)
 
 Nova Spark is a performance monitoring and diagnostics tool for Node.js applications. It provides a centralized metrics collection system, allowing developers to monitor various aspects of their applications, including CPU usage, memory consumption, and more.
